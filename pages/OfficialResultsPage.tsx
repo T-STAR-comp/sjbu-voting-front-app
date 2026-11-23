@@ -22,7 +22,7 @@ interface OfficialResultsPageProps {
 /**
  * OfficialResultsPage
  * - Authoritative server schedule used when available.
- * - If resultsAnnouncement is missing and election has ended, create a 30-minute client fallback persisted to localStorage.
+ * - If resultsAnnouncement is missing, use 30 minutes after the scheduled end as the fallback.
  * - Parent clock (interval) is the single source of truth for button enablement and countdown display.
  */
 const OfficialResultsPage: React.FC<OfficialResultsPageProps> = ({ setPage, schedule, scheduleLoading }) => {
@@ -104,11 +104,10 @@ const OfficialResultsPage: React.FC<OfficialResultsPageProps> = ({ setPage, sche
       return;
     }
 
-    // only create fallback when endDate exists and election has ended
+    // Keep the browser countdown aligned with the API's scheduled fallback.
     if (endDate && now.getTime() >= endDate.getTime()) {
-      // keep existing if still valid
-      if (persistedFallback && persistedFallback.getTime() > now.getTime()) return;
-      const newFallback = new Date(Date.now() + FALLBACK_DURATION_MS);
+      const newFallback = new Date(endDate.getTime() + FALLBACK_DURATION_MS);
+      if (persistedFallback?.getTime() === newFallback.getTime()) return;
       persistFallback(electionKey, newFallback);
       setPersistedFallback(newFallback);
       return;
@@ -122,7 +121,7 @@ const OfficialResultsPage: React.FC<OfficialResultsPageProps> = ({ setPage, sche
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [endDate, resultsAnnouncement, now, electionKey]);
 
-  // effective announcement target: server first, then persisted fallback
+  // Effective target: server schedule first, then the end-time-based fallback.
   const effectiveAnnouncementTarget: Date | null = resultsAnnouncement ?? persistedFallback;
 
   // derive phase safely (only using server timestamps to decide UNKNOWN/PRE/LIVE/POST_WAIT/POST)
@@ -207,7 +206,7 @@ const OfficialResultsPage: React.FC<OfficialResultsPageProps> = ({ setPage, sche
               <div className="py-6">
                 <CountdownTimer targetDate={announcementTarget} title="Official Announcement In" onCompleteMessage="Results Verified!" />
                 {persistedFallback && !resultsAnnouncement && (
-                  <p className="mt-2 text-sm text-yellow-200">Using local 30‑minute fallback announcement time.</p>
+                  <p className="mt-2 text-sm text-yellow-200">Using the 30-minute fallback after the scheduled end.</p>
                 )}
               </div>
             ) : (

@@ -3,6 +3,7 @@ import * as React from 'react';
 import { ElectionStatus } from '../types';
 import { useOverallStats } from '../hooks/useOverallStats';
 import { useAllPositions } from '../hooks/useAllPositions';
+import { handleCandidateImageError } from '../src/utils/candidateImage';
 
 interface WinnersPageProps {
   electionStatus: ElectionStatus;
@@ -101,7 +102,7 @@ const WinnersPage: React.FC<WinnersPageProps> = ({ electionStatus }) => {
 
           if (!winner) return null;
 
-          const winnerImg = winner.imageUrl?.trim() ? winner.imageUrl : placeholder;
+          const winnerImg = winner.imageUrl?.trim() || placeholder;
 
           return (
             <div
@@ -120,7 +121,7 @@ const WinnersPage: React.FC<WinnersPageProps> = ({ electionStatus }) => {
                 <div className="flex flex-col md:flex-row items-center gap-10">
                   <div className="relative">
                     <div className="w-48 h-48 rounded-3xl overflow-hidden ring-8 ring-dmi-gold-400 shadow-2xl">
-                      <img src={winnerImg} alt={winner.name} className="w-full h-full object-cover" />
+                      <img src={winnerImg} alt={winner.name} onError={handleCandidateImageError} className="w-full h-full object-cover" />
                     </div>
                     <div className="absolute -top-4 -right-4 bg-dmi-gold-500 text-dmi-blue-950 rounded-full p-4 shadow-xl">
                       <CrownIcon />

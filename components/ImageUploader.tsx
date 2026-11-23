@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import sjbuApi from '../src/api/sjbuApi';
+import { CANDIDATE_IMAGE_PLACEHOLDER, handleCandidateImageError } from '../src/utils/candidateImage';
 import axios from 'axios';
 
 // Compress and upload utilities left intact (kept as in your file)
@@ -125,7 +126,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ imageUrl, onUploadSuccess
 
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700">Candidate Photo</label>
+      <label className="block text-sm font-medium text-gray-700">Candidate Photo (optional)</label>
       <div
         className={`mt-1 flex justify-center items-center px-4 pt-5 pb-6 border-2 rounded-md transition-colors ${
           isDragging && !disabled ? 'border-dmi-blue-500 bg-dmi-blue-50 border-dashed' : 'border-dashed border-gray-300 bg-white'
@@ -147,7 +148,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ imageUrl, onUploadSuccess
               <p className="text-sm text-gray-500 mt-2">Uploading and compressing...</p>
             </div>
           ) : imageUrl ? (
-            <img src={imageUrl} alt="Candidate preview" className="mx-auto h-40 w-40 rounded-full object-cover shadow-md" />
+            <img src={imageUrl || CANDIDATE_IMAGE_PLACEHOLDER} alt="Candidate preview" onError={handleCandidateImageError} className="mx-auto h-40 w-40 rounded-full object-cover shadow-md" />
           ) : (
             placeholder
           )}
@@ -162,7 +163,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ imageUrl, onUploadSuccess
             </label>
             <p className="pl-2">or drag and drop</p>
           </div>
-          <p className="text-xs text-gray-500">(Recommended: PNG/JPG up to 500px, compressed for speed)</p>
+          <p className="text-xs text-gray-500">A photo is optional. Candidates without a photo use a placeholder image.</p>
         </div>
       </div>
       {error && <p className="mt-2 text-sm text-red-600 text-center" role="status">{error}</p>}

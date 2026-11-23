@@ -18,7 +18,7 @@ const LiveIndicator = () => (
 );
 
 const LiveResultsPage: React.FC<LiveResultsPageProps> = ({ positions, setPage }) => {
-  const { stats, isLoading: isStatsLoading, error: statsError } = useLiveStatsPolling();
+  const { stats, isLoading: isStatsLoading, error: statsError, statusMessage } = useLiveStatsPolling();
 
   const isLoading = isStatsLoading;
   const error = statsError;
@@ -42,11 +42,21 @@ const LiveResultsPage: React.FC<LiveResultsPageProps> = ({ positions, setPage })
     );
   }
 
+  if (!stats && statusMessage) {
+    return (
+      <div className="container px-4 py-8 text-center min-h-[60vh] flex items-center justify-center">
+        <Card className="max-w-2xl mx-auto p-6 text-center">
+          <h2 className="text-2xl font-bold text-dmi-blue-900">Live Results Are Closed</h2>
+          <p className="text-gray-600 mt-3 text-sm">{statusMessage}</p>
+        </Card>
+      </div>
+    );
+  }
+
   const totalVotesCastRaw = Number(stats?.totalVotesCast ?? 0);
   const totalVotersRaw = Number(stats?.totalVoters ?? 0);
 
-  // UI-facing aggregate adjusted
-  const displayedVotes = Math.round(totalVotesCastRaw / 2);
+  const displayedVotes = totalVotesCastRaw;
   const displayedVoters = totalVotersRaw;
 
   const turnoutPercent = (() => {
@@ -62,15 +72,17 @@ const LiveResultsPage: React.FC<LiveResultsPageProps> = ({ positions, setPage })
     <div className="container px-4 py-6">
       <div className="text-center mb-6">
           <div className="flex flex-col sm:flex-row justify-center items-center gap-3">
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-dmi-blue-900">Live Election Tracker</h1>
-              {isLoading ? <span className="text-sm text-gray-500">(Polling...)</span> : <LiveIndicator />}
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-dmi-blue-900">{stats?.isLive ? 'Live Election Tracker' : 'Election Results'}</h1>
+              {stats?.isLive && (isLoading ? <span className="text-sm text-gray-500">(Updating...)</span> : <LiveIndicator />)}
           </div>
-          <p className="text-sm sm:text-base text-gray-600 mt-2">The election is currently in progress. Watch the numbers update in real-time!</p>
+          <p className="text-sm sm:text-base text-gray-600 mt-2">
+            {stats?.isLive ? 'The election is currently in progress. Watch the numbers update in real-time!' : 'Final results have been published.'}
+          </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <Card className="p-4 text-center">
-              <h3 className="text-sm font-semibold text-gray-500">Live Votes Cast</h3>
+              <h3 className="text-sm font-semibold text-gray-500">{stats?.isLive ? 'Live Voters Who Voted' : 'Voters Who Voted'}</h3>
               <p className="text-3xl sm:text-4xl font-bold text-dmi-blue-800 transition-all duration-300">{displayedVotes}</p>
           </Card>
 
@@ -80,7 +92,7 @@ const LiveResultsPage: React.FC<LiveResultsPageProps> = ({ positions, setPage })
           </Card>
 
           <Card className="p-4 text-center">
-              <h3 className="text-sm font-semibold text-gray-500">Live Voter Turnout</h3>
+              <h3 className="text-sm font-semibold text-gray-500">{stats?.isLive ? 'Live Voter Turnout' : 'Final Voter Turnout'}</h3>
               <p className="text-3xl sm:text-4xl font-bold text-dmi-blue-800 transition-all duration-300">{turnoutPercent}%</p>
           </Card>
       </div>

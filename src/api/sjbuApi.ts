@@ -32,6 +32,7 @@ export const updateSchedule = async (payload: {
 interface PositionWithCandidatesResponse {
     id: number;
     name: string; // The DTO uses name, while the DB uses position_name
+    isVotable: boolean;
     candidates: CandidateResponse[];
 }
 
@@ -39,7 +40,7 @@ interface PositionWithCandidatesResponse {
 interface CandidateData {
     name: string;
     positionId: number;
-    imageUrl: string; 
+    imageUrl?: string;
     manifesto: string; // CRITICAL FIX: Changed from 'bio' to 'manifesto'
 }
 
@@ -153,6 +154,7 @@ const getAllPositionsWithCandidates = (): Promise<AxiosResponse<{ positions: Pos
           return {
             id: position.id,
             name: position.positionName,
+            isVotable: position.isVotable,
             candidates: candidatesResponse.data.data,
           };
         })

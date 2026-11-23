@@ -72,10 +72,11 @@ const HomePage: FC<HomePageProps> = ({ setPage, electionStatus, electionStartDat
             </Button>
           )}
           <Button size="lg" variant="secondary" onClick={() => setPage(Page.Authentication)} disabled={electionStatus !== 'LIVE'} className="w-full sm:w-auto">
-            Use Voucher Code
+            Cast Your Vote
+            <svg className="w-4 h-4 ml-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
           </Button>
           <Button size="lg" variant="secondary" onClick={() => setPage(Page.Results)} className="w-full sm:w-auto">
-            View Results
+            {electionStatus === 'LIVE' ? 'View Live Results' : 'View Results'}
           </Button>
         </div>
       </div>

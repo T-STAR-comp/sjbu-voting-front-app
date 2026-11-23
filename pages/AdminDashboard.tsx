@@ -17,6 +17,7 @@ import { useAuditLogs } from '../hooks/useAuditLogs';
 import { isAxiosError } from 'axios';
 import { useVotingTrends } from '../hooks/useVotingTrends'; 
 import { useAllPositions } from '../hooks/useAllPositions'; 
+import { CANDIDATE_IMAGE_PLACEHOLDER, handleCandidateImageError } from '../src/utils/candidateImage';
 
 // New imports for schedule editor
 import useElectionSchedule from '../hooks/useElectionSchedule';
@@ -218,10 +219,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ permissions }) => {
     const totalVotesCast = stats?.totalVotesCast ?? 0;
     const totalVoters = stats?.totalVoters ?? 0;
     
-    const uniqueVotersProxy = totalVotesCast / 2;
-    const liveVoterTurnout = (totalVoters > 0 && uniqueVotersProxy > 0)
-        ? ((uniqueVotersProxy / totalVoters) * 100).toFixed(2)
-        : '0.00';
+    const liveVoterTurnout = (stats?.voterTurnout ?? 0).toFixed(2);
 
     const positionsWithStats = stats?.positionsWithStats || [];
     const isReadOnly = !permissions.canManagePositions && !permissions.canManageCandidates;
@@ -378,6 +376,22 @@ interface SettingsViewProps {
     permissions: Permissions;
     onStartCountdown: (hours: number) => void;
 }
+
+const formatDateTimeLocalCAT = (value: string | null): string => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return new Date(date.getTime() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16);
+};
+
+const dateTimeLocalCATToISOString = (value: string): string => {
+    const date = new Date(`${value}:00+02:00`);
+    if (Number.isNaN(date.getTime())) {
+        throw new Error('Enter a valid CAT date and time.');
+    }
+    return date.toISOString();
+};
+
 const SettingsView: React.FC<SettingsViewProps> = ({ permissions, onStartCountdown }) => {
     const { schedule, phase, loading: scheduleLoading, refresh } = useElectionSchedule();
     const [startInput, setStartInput] = useState('');
@@ -388,9 +402,9 @@ const SettingsView: React.FC<SettingsViewProps> = ({ permissions, onStartCountdo
 
     useEffect(() => {
         if (schedule) {
-            setStartInput(schedule.startDate ? new Date(schedule.startDate).toISOString().slice(0, 16) : '');
-            setEndInput(schedule.endDate ? new Date(schedule.endDate).toISOString().slice(0, 16) : '');
-            setResultsInput(schedule.resultsAnnouncement ? new Date(schedule.resultsAnnouncement).toISOString().slice(0, 16) : '');
+            setStartInput(formatDateTimeLocalCAT(schedule.startDate));
+            setEndInput(formatDateTimeLocalCAT(schedule.endDate));
+            setResultsInput(formatDateTimeLocalCAT(schedule.resultsAnnouncement));
         }
     }, [schedule]);
 
@@ -401,15 +415,15 @@ const SettingsView: React.FC<SettingsViewProps> = ({ permissions, onStartCountdo
         setMsg(null);
         try {
             await updateSchedule({
-                startDate: new Date(`${startInput}:00Z`).toISOString(),
-                endDate: new Date(`${endInput}:00Z`).toISOString(),
-                resultsAnnouncement: resultsInput ? new Date(`${resultsInput}:00Z`).toISOString() : null
+                startDate: dateTimeLocalCATToISOString(startInput),
+                endDate: dateTimeLocalCATToISOString(endInput),
+                resultsAnnouncement: resultsInput ? dateTimeLocalCATToISOString(resultsInput) : null
             });
             setMsg('Schedule saved');
             await refresh();
         } catch (err: any) {
             console.error(err);
-            setMsg(err?.response?.data?.error || 'Save failed');
+            setMsg(err?.response?.data?.error || err?.message || 'Save failed');
         } finally {
             setSaving(false);
         }
@@ -430,17 +444,17 @@ const SettingsView: React.FC<SettingsViewProps> = ({ permissions, onStartCountdo
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Election Start Date (UTC)</label>
-                        <input type="datetime-local" value={startInput} onChange={e => setStartInput(e.target.value)} disabled={!permissions.canEditSettings} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-dmi-blue-500 focus:ring-dmi-blue-500 disabled:bg-gray-100" />
+                        <label className="block text-sm font-medium text-gray-700">Election Start Date (CAT, UTC+02:00)</label>
+                        <input type="datetime-local" required value={startInput} onChange={e => setStartInput(e.target.value)} disabled={!permissions.canEditSettings} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-dmi-blue-500 focus:ring-dmi-blue-500 disabled:bg-gray-100" />
                     </div>
                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Election End Date (UTC)</label>
-                        <input type="datetime-local" value={endInput} onChange={e => setEndInput(e.target.value)} disabled={!permissions.canEditSettings} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-dmi-blue-500 focus:ring-dmi-blue-500 disabled:bg-gray-100" />
+                        <label className="block text-sm font-medium text-gray-700">Election End Date (CAT, UTC+02:00)</label>
+                        <input type="datetime-local" required value={endInput} onChange={e => setEndInput(e.target.value)} disabled={!permissions.canEditSettings} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-dmi-blue-500 focus:ring-dmi-blue-500 disabled:bg-gray-100" />
                     </div>
                 </div>
 
                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Results Announcement (UTC, optional)</label>
+                    <label className="block text-sm font-medium text-gray-700">Results Announcement (CAT, UTC+02:00, optional)</label>
                     <input type="datetime-local" value={resultsInput} onChange={e => setResultsInput(e.target.value)} disabled={!permissions.canEditSettings} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-dmi-blue-500 focus:ring-dmi-blue-500 disabled:bg-gray-100" />
                 </div>
 
@@ -450,7 +464,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ permissions, onStartCountdo
             </form>
 
             <div className="p-4 border-t space-y-3 text-sm text-gray-600">
-                <p>Server schedule: {schedule ? `${schedule.startDate ?? '—'} → ${schedule.endDate ?? '—'}` : (scheduleLoading ? 'Loading...' : 'Not configured')}</p>
+                <p>Server schedule (CAT): {schedule ? `${schedule.startDate ? `${formatDateTimeLocalCAT(schedule.startDate)} CAT` : '—'} → ${schedule.endDate ? `${formatDateTimeLocalCAT(schedule.endDate)} CAT` : '—'}` : (scheduleLoading ? 'Loading...' : 'Not configured')}</p>
                 {msg && <p className="text-sm text-gray-700">{msg}</p>}
             </div>
         </Card>
@@ -854,7 +868,7 @@ const CandidatesView: React.FC<CandidatesViewProps> = ({ positions, permissions,
                                 {selectedPosition.candidates.map(cand => (
                                     <div key={cand.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border">
                                         <div className="flex items-center space-x-3">
-                                            <img src={cand.imageUrl || '/path/to/placeholder-image.png'} alt={cand.name} className="w-12 h-12 rounded-full object-cover"/>
+                                            <img src={cand.imageUrl?.trim() || CANDIDATE_IMAGE_PLACEHOLDER} alt={cand.name} onError={handleCandidateImageError} className="w-12 h-12 rounded-full object-cover"/>
                                             <div>
                                                 <p className="font-semibold text-gray-800">{cand.name}</p>
                                                 <p className="text-xs text-gray-500">{cand.manifesto ? (cand.manifesto.substring(0, 60) + (cand.manifesto.length > 60 ? '…' : '')) : 'No bio provided'}</p> 
@@ -1128,7 +1142,7 @@ const CandidateForm = ({ type, candidate, positionId, onSuccess, onCancel }: { t
     const [formData, setFormData] = useState({
         name: candidate?.name || '',
         manifesto: (candidate as any)?.manifesto || candidate?.manifesto || '',
-        imageUrl: candidate?.imageUrl || null,
+        imageUrl: candidate?.imageUrl || '',
     });
 
     const [isLoading, setIsLoading] = useState(false);
@@ -1148,17 +1162,11 @@ const CandidateForm = ({ type, candidate, positionId, onSuccess, onCancel }: { t
         setError('');
         setIsLoading(true);
 
-        if (!formData.imageUrl) {
-            setError('Please upload an image before saving the candidate.');
-            setIsLoading(false);
-            return;
-        }
-
         try {
             const payload = {
                  name: formData.name,
                  positionId: positionIdNum,
-                 imageUrl: formData.imageUrl,
+                 imageUrl: formData.imageUrl || undefined,
                  manifesto: formData.manifesto,
             };
             
@@ -1198,7 +1206,7 @@ const CandidateForm = ({ type, candidate, positionId, onSuccess, onCancel }: { t
             </div>
             <div className="md:col-span-3 flex justify-end space-x-3 pt-3 border-t mt-2">
                 <Button type="button" variant="secondary" onClick={onCancel} disabled={isLoading}>Cancel</Button>
-                <Button type="submit" disabled={isLoading || !formData.imageUrl}>{isLoading ? <Spinner /> : (type === 'ADD_CANDIDATE' ? 'Create Candidate' : 'Update Candidate')}</Button>
+                <Button type="submit" disabled={isLoading}>{isLoading ? <Spinner /> : (type === 'ADD_CANDIDATE' ? 'Create Candidate' : 'Update Candidate')}</Button>
             </div>
         </form>
     );

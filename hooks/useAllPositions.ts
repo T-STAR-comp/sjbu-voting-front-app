@@ -36,6 +36,7 @@ export const useAllPositions = (): AllPositionsState => {
       const mappedPositions: PositionWithCandidates[] = rawPositions.map((p: any) => ({
         id: p.id,
         name: p.name,
+        isVotable: p.isVotable,
         candidates: p.candidates.map((c: any) => ({
           id: c.id,
           name: c.name,

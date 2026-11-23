@@ -61,7 +61,7 @@ const ResultsPage: React.FC<ResultsPageProps> = ({ setPage }) => {
                                 </div>
                                 <div className="text-center mt-3">
                                         <p className="text-gray-600 text-sm">
-                                                Total Votes: {totalVotes} / {eligibleVoters}
+                                                Voters Voted: {totalVotes} / {eligibleVoters}
                                         </p>
                                         <p className="text-gray-600 text-sm">
                                                 Turnout Percentage: {turnoutPercentage.toFixed(2)}%

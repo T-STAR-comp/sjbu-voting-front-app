@@ -8,6 +8,7 @@ import Modal from '../components/Modal';
 import Spinner from '../components/Spinner';
 import sjbuApi from '../src/api/sjbuApi';
 import useElectionSchedule from '../hooks/useElectionSchedule';
+import { CANDIDATE_IMAGE_PLACEHOLDER, handleCandidateImageError } from '../src/utils/candidateImage';
 
 interface VoteSelection {
   [positionId: number]: number;
@@ -71,7 +72,8 @@ const VotingPage: React.FC<VotingPageProps> = ({
     }
   }, [selections]);
 
-  const currentPosition = positions[currentPositionIndex];
+  const ballotPositions = positions.filter(position => position.isVotable !== false);
+  const currentPosition = ballotPositions[currentPositionIndex];
 
   const handleSelect = (candidateId: number) => {
     setSelections(prev => ({
@@ -81,11 +83,11 @@ const VotingPage: React.FC<VotingPageProps> = ({
   };
 
   const handleNext = () => {
-    if (currentPositionIndex < positions.length - 1) {
+    if (currentPositionIndex < ballotPositions.length - 1) {
       setCurrentPositionIndex(currentPositionIndex + 1);
     } else {
-      if (Object.keys(selections).length < positions.length) {
-        alert('Please select a candidate for all positions.');
+      if (ballotPositions.some(position => !selections[position.id])) {
+        alert('Please select a candidate for every votable position.');
         return;
       }
       setView('review');
@@ -98,7 +100,6 @@ const VotingPage: React.FC<VotingPageProps> = ({
     }
   };
 
-// UPDATED SUBMISSION HANDLER WITH PARTIAL VOTE SUPPORT
 const handleSubmit = async () => {
   if (scheduleLoading) {
     alert('Please wait — election schedule is loading.');
@@ -112,8 +113,8 @@ const handleSubmit = async () => {
     alert('You are offline. Reconnect to submit your vote.');
     return;
   }
-  if (Object.keys(selections).length !== positions.length) {
-    alert('You must vote for both positions.');
+  if (ballotPositions.length === 0 || ballotPositions.some(position => !selections[position.id])) {
+    alert('You must select a candidate for every votable position.');
     return;
   }
 
@@ -121,70 +122,20 @@ const handleSubmit = async () => {
   setIsConfirmModalOpen(false);
 
   try {
-    // Identify positions
-    const presidentPos = positions.find(p => p.name.toLowerCase().includes('president') && !p.name.toLowerCase().includes('vice'));
-    const vicePos = positions.find(p => 
-      p.name.toLowerCase().includes('vice') || 
-      p.name.toLowerCase().includes('vp')
-    );
-
-    if (!presidentPos || !vicePos) {
-      throw new Error('Could not identify President or Vice President position.');
-    }
-
-    const presidentCandidateId = selections[presidentPos.id];
-    const vicePresidentCandidateId = selections[vicePos.id];
-
-    if (!presidentCandidateId || !vicePresidentCandidateId) {
-      alert('Please complete your ballot.');
-      setIsSubmitting(false);
-      return;
-    }
-
-    // Submit vote request
+    const candidateIds = ballotPositions.map(position => selections[position.id]);
     const response = await sjbuApi.post('/vote', {
       voucher: userVoucher,
-      presidentCandidateId,
-      vicePresidentCandidateId,
+      candidateIds,
     });
 
-    // EXTRACT VERIFICATION CODE AND MESSAGE FROM BACKEND RESPONSE
-    let verificationCode: string | null = null;
-    let message: string = 'Your vote was recorded successfully!';
+    const verificationCode = response.data?.data?.verificationCode;
 
-    const data = response.data?.data;
-
-    // Try to extract verification code from various response structures
-    if (data?.verificationCode) {
-      verificationCode = data.verificationCode;
-    } else if (data?.presidentVote?.verification_code) {
-      verificationCode = data.presidentVote.verification_code;
-    } else if (data?.vicePresidentVote?.verification_code) {
-      verificationCode = data.vicePresidentVote.verification_code;
-    } else if (data?.presidentVote?.verificationCode) {
-      verificationCode = data.presidentVote.verificationCode;
-    } else if (data?.vicePresidentVote?.verificationCode) {
-      verificationCode = data.vicePresidentVote.verificationCode;
-    }
-
-    // Extract custom message if provided (for partial vote completion)
-    if (data?.message) {
-      message = data.message;
-    }
-
-    // Handle different response scenarios
     if (!verificationCode) {
       console.warn('Vote succeeded but no verification code found', response.data);
       alert('Your vote was recorded successfully, but no verification code was received. Contact an admin if needed.');
       localStorage.removeItem('dmi-vote-selections');
       setPage(Page.Home);
       return;
-    }
-
-    // Show appropriate success message
-    if (message.includes('completed') || message.includes('adding')) {
-      // This was a partial vote completion
-      alert(`✓ ${message}\n\nYour verification code: ${verificationCode}`);
     }
 
     setVerificationCode(verificationCode);
@@ -198,15 +149,7 @@ const handleSubmit = async () => {
 
     // Handle specific error scenarios
     if (err.response?.status === 409) {
-      const errorMsg = err.response?.data?.error || '';
-      
-      if (errorMsg.includes('already been used for both positions')) {
-        message = '⚠️ You have already cast your complete vote for both positions. Your voucher cannot be used again.';
-      } else if (errorMsg.includes('already voted for this position')) {
-        message = '⚠️ You have already voted for this position. Please contact support if you believe this is an error.';
-      } else {
-        message = '⚠️ This voucher has already been used to vote.';
-      }
+      message = 'You have already submitted a ballot using this voucher.';
     } else if (err.response?.status === 500) {
       const errorMsg = err.response?.data?.error || '';
       
@@ -252,6 +195,17 @@ const handleSubmit = async () => {
     );
   }
 
+  if (ballotPositions.length === 0 || ballotPositions.some(position => position.candidates.length === 0)) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center">
+        <Card className="max-w-4xl mx-auto p-6">
+          <h2 className="text-xl font-bold text-dmi-blue-900">Ballot is not ready</h2>
+          <p className="mt-2 text-gray-600">There are no candidates for one or more votable positions. Please contact an election administrator.</p>
+        </Card>
+      </div>
+    );
+  }
+
   if (!currentPosition) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
@@ -265,12 +219,12 @@ const handleSubmit = async () => {
   const renderVotingView = () => (
     <Card className="max-w-4xl mx-auto">
       <div className="p-6 border-b">
-        <p className="text-sm text-gray-500">Position {currentPositionIndex + 1} of {positions.length}</p>
+        <p className="text-sm text-gray-500">Position {currentPositionIndex + 1} of {ballotPositions.length}</p>
         <h2 className="text-2xl font-bold text-dmi-blue-900">{currentPosition.name}</h2>
         <div className="w-full bg-gray-200 rounded-full h-2.5 mt-3">
           <div
             className="bg-dmi-blue-600 h-2.5 rounded-full transition-all"
-            style={{ width: `${((currentPositionIndex + 1) / positions.length) * 100}%` }}
+            style={{ width: `${((currentPositionIndex + 1) / ballotPositions.length) * 100}%` }}
           />
         </div>
       </div>
@@ -288,7 +242,7 @@ const handleSubmit = async () => {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <img src={candidate.imageUrl} alt={candidate.name} className="w-16 h-16 rounded-full object-cover" />
+                <img src={candidate.imageUrl?.trim() || CANDIDATE_IMAGE_PLACEHOLDER} alt={candidate.name} onError={handleCandidateImageError} className="w-16 h-16 rounded-full object-cover" />
                 <div>
                   <h4 className="text-lg font-semibold text-dmi-blue-900">{candidate.name}</h4>
                   <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); openManifesto(candidate); }}>
@@ -311,7 +265,7 @@ const handleSubmit = async () => {
           Back
         </Button>
         <Button onClick={handleNext} disabled={!selections[currentPosition.id]}>
-          {currentPositionIndex < positions.length - 1 ? 'Next' : 'Review Ballot'}
+          {currentPositionIndex < ballotPositions.length - 1 ? 'Next' : 'Review Ballot'}
         </Button>
       </div>
     </Card>
@@ -325,7 +279,7 @@ const handleSubmit = async () => {
       </div>
 
       <div className="p-6 space-y-4">
-        {positions.map(pos => {
+        {ballotPositions.map(pos => {
           const selected = pos.candidates.find(c => c.id === selections[pos.id]);
           return (
             <div key={pos.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
@@ -334,7 +288,7 @@ const handleSubmit = async () => {
                 <p className="text-lg">{selected?.name || 'No selection'}</p>
               </div>
               <Button variant="secondary" size="sm" onClick={() => {
-                setCurrentPositionIndex(positions.findIndex(p => p.id === pos.id));
+                setCurrentPositionIndex(ballotPositions.findIndex(p => p.id === pos.id));
                 setView('voting');
               }}>
                 Change

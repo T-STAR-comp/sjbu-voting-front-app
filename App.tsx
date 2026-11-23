@@ -271,7 +271,7 @@ const App: React.FC = () => {
       case Page.VoteSuccess:
         return <VoteSuccessPage verificationCode={verificationCode} setPage={setCurrentPage} />;
       case Page.Verification:
-        return <VerificationPage />;
+        return <VerificationPage initialVerificationCode={verificationCode} />;
       case Page.Results:
         return renderResultsPage();
       case Page.Winners:

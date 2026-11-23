@@ -8,6 +8,7 @@ import Spinner from '../components/Spinner';
 import Modal from '../components/Modal';
 import Button from '../components/Button';
 import { Candidate, Position } from '../types';
+import { CANDIDATE_IMAGE_PLACEHOLDER, handleCandidateImageError } from '../src/utils/candidateImage';
 
 interface PositionWithCandidates extends Position {
   candidates: Candidate[];
@@ -59,9 +60,6 @@ const CandidateGalleryPage: React.FC = () => {
     setImageViewer({ isOpen: false, src: '', alt: '' });
   };
 
-  const defaultPlaceholder =
-    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%23ccc'/%3E%3Ctext x='50' y='55' text-anchor='middle' font-size='18' fill='%23666'%3E?%3C/text%3E%3C/svg%3E";
-
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8 text-center min-h-[60vh] flex items-center justify-center">
@@ -109,7 +107,7 @@ const CandidateGalleryPage: React.FC = () => {
             {position.candidates.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {position.candidates.map((candidate) => {
-                  const src = candidate.imageUrl?.trim() || defaultPlaceholder;
+                  const src = candidate.imageUrl?.trim() || CANDIDATE_IMAGE_PLACEHOLDER;
                   return (
                     <div key={candidate.id} className="text-center border rounded-card overflow-hidden shadow-sm transition-shadow hover:shadow-md">
                       <div className="bg-gray-100 p-4 flex justify-center">
@@ -124,10 +122,7 @@ const CandidateGalleryPage: React.FC = () => {
                             src={src}
                             alt={candidate.name}
                             className="w-36 h-36 sm:w-44 sm:h-44 md:w-48 md:h-48 object-cover rounded-full border-4 border-white shadow-md transform hover:scale-105 transition-transform duration-200"
-                            onError={(e) => {
-                              const t = e.currentTarget;
-                              if (t.src !== defaultPlaceholder) t.src = defaultPlaceholder;
-                            }}
+                            onError={handleCandidateImageError}
                           />
                         </button>
                       </div>
@@ -193,10 +188,7 @@ const CandidateGalleryPage: React.FC = () => {
               src={imageViewer.src}
               alt={imageViewer.alt}
               className="max-w-full max-h-[65vh] object-contain rounded-md"
-              onError={(e) => {
-                const t = e.currentTarget;
-                if (t.src !== defaultPlaceholder) t.src = defaultPlaceholder;
-              }}
+              onError={handleCandidateImageError}
             />
           </div>
 
