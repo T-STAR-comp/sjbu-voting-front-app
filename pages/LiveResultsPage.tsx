@@ -1,11 +1,9 @@
 import * as React from 'react';
-import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 import { Position, Page } from '../types';
 import Card from '../components/Card';
 import Spinner from '../components/Spinner';
 import { useLiveStatsPolling } from '../hooks/useLiveStatsPolling';
-import { useVotingTrends } from '../hooks/useVotingTrends';
 
 interface LiveResultsPageProps {
   positions: Position[];
@@ -21,10 +19,9 @@ const LiveIndicator = () => (
 
 const LiveResultsPage: React.FC<LiveResultsPageProps> = ({ positions, setPage }) => {
   const { stats, isLoading: isStatsLoading, error: statsError } = useLiveStatsPolling();
-  const { hourlyTrends, isLoading: isTrendsLoading, error: trendsError } = useVotingTrends();
 
-  const isLoading = isStatsLoading || isTrendsLoading;
-  const error = statsError || trendsError;
+  const isLoading = isStatsLoading;
+  const error = statsError;
 
   if (isLoading && !stats) {
     return (

@@ -1,19 +1,20 @@
 // web/hooks/useResultsStats.ts
 
 import { useCallback, useEffect, useState } from 'react';
+import sjbuApi from '../src/api/sjbuApi';
+import { subscribeToServerChanges } from '../src/api/serverEvents';
 
 export interface ResultsStats {
     overall?: {
         totalVotes: number;
         eligibleVoters: number;
     };
-    positions?: Record<
-        string,
-        {
+    positions?: Array<{
+            positionId: number;
+            positionName: string;
+            totalVotes: number;
             votes: Record<string, number>;
-            // other per-position metadata can be added here
-        }
-    >;
+        }>;
     // optional auxiliary data for charts
     hourlyTurnout?: any[];
     stationStatus?: any[];
@@ -29,17 +30,16 @@ export const useResultsStats = () => {
         setError(null);
 
         try {
-            const res = await fetch('/api/v1/stats/', { signal });
-            if (!res.ok) {
-                throw new Error(`Failed to load stats: ${res.status} ${res.statusText}`);
-            }
-            const data = await res.json();
-            // normalize minimal shape if backend doesn't provide optional fields
+            const response = await sjbuApi.get('/results', { signal });
+            const data = response.data.data;
             const normalized: ResultsStats = {
-                overall: data.overall ?? data,
+                overall: {
+                    totalVotes: data.totalVotesCast ?? 0,
+                    eligibleVoters: data.totalVoters ?? 0,
+                },
                 positions: data.positions ?? {},
-                hourlyTurnout: data.hourlyTurnout ?? [],
-                stationStatus: data.stationStatus ?? [],
+                hourlyTurnout: [],
+                stationStatus: [],
             };
             setStats(normalized);
         } catch (err: any) {
@@ -56,6 +56,10 @@ export const useResultsStats = () => {
         fetchStats(ac.signal);
         return () => ac.abort();
     }, [fetchStats]);
+
+    useEffect(() => subscribeToServerChanges(sjbuApi, (change) => {
+        if (change === 'votes' || change === 'election') fetchStats();
+    }), [fetchStats]);
 
     return { stats, isLoading, error, refetch: fetchStats as (signal?: AbortSignal) => Promise<void> };
 };

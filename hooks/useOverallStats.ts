@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import sjbuApi from '../src/api/sjbuApi';
 import axios, { isAxiosError } from 'axios'; 
+import { subscribeToServerChanges } from '../src/api/serverEvents';
 
 // Inferred structure based on VotingStats schema (Page 40)
 interface OverallStats {
@@ -60,6 +61,10 @@ export const useOverallStats = (): StatsState => {
     useEffect(() => {
         fetchStats();
     }, [fetchStats]);
+
+    useEffect(() => subscribeToServerChanges(sjbuApi, (change) => {
+        if (change === 'votes' || change === 'positions') fetchStats();
+    }), [fetchStats]);
 
     return { stats, isLoading, error, fetchStats };
 };

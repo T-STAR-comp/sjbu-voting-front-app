@@ -54,7 +54,7 @@ export const useVotingData = (): VotingDataState => {
       // FIX: Map the backend's raw data (with position_name) to the frontend's Position type (with name)
       const basePositions: Position[] = rawPositions.map(rawPos => ({
           id: rawPos.id,
-          name: rawPos.position_name, // MAPPED: position_name -> name
+          name: rawPos.positionName,
           candidates: [] // Placeholder, will be filled in the next step
       }));
 

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import sjbuApi from '../src/api/sjbuApi';
 import axios from 'axios'; // ADDED: Import axios for isAxiosError check
+import { subscribeToServerChanges } from '../src/api/serverEvents';
 
 interface TrendData {
     hour: string;
@@ -15,8 +16,6 @@ interface TrendsState {
     error: string | null;
     fetchTrends: () => Promise<void>;
 }
-
-const TRENDS_POLLING_INTERVAL = 30000; // Poll every 30 seconds
 
 export const useVotingTrends = (): TrendsState => {
     const [hourlyTrends, setHourlyTrends] = useState<TrendData[]>([]);
@@ -63,8 +62,9 @@ export const useVotingTrends = (): TrendsState => {
 
     useEffect(() => {
         fetchTrends();
-        const interval = setInterval(fetchTrends, TRENDS_POLLING_INTERVAL);
-        return () => clearInterval(interval);
+        return subscribeToServerChanges(sjbuApi, (change) => {
+            if (change === 'votes') fetchTrends();
+        });
     }, [fetchTrends]);
 
     return { hourlyTrends, isLoading, error, fetchTrends };

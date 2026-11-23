@@ -1,6 +1,8 @@
 // web/src/hooks/useElectionSchedule.ts
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { fetchSchedule } from '../src/api/sjbuApi';
+import sjbuApi from '../src/api/sjbuApi';
+import { subscribeToServerChanges } from '../src/api/serverEvents';
 
 export type Phase = 'PRE' | 'LIVE' | 'POST_WAIT' | 'POST' | 'UNKNOWN';
 export type Schedule = {
@@ -21,11 +23,10 @@ export function derivePhase(now: Date, start?: Date | null, end?: Date | null, r
   return 'UNKNOWN';
 }
 
-export default function useElectionSchedule(pollMs = 15000) {
+export default function useElectionSchedule() {
   const [schedule, setSchedule] = useState<Schedule | null>(null);
   const [phase, setPhase] = useState<Phase>('UNKNOWN');
   const [loading, setLoading] = useState(true);
-  const timerRef = useRef<number | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -45,11 +46,23 @@ export default function useElectionSchedule(pollMs = 15000) {
 
   useEffect(() => {
     load();
-    timerRef.current = window.setInterval(load, pollMs);
-    return () => {
-      if (timerRef.current) window.clearInterval(timerRef.current);
-    };
-  }, [load, pollMs]);
+    return subscribeToServerChanges(sjbuApi, (change) => {
+      if (change === 'schedule' || change === 'election') load();
+    });
+  }, [load]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (!schedule) return;
+      setPhase(derivePhase(
+        new Date(),
+        schedule.startDate ? new Date(schedule.startDate) : null,
+        schedule.endDate ? new Date(schedule.endDate) : null,
+        schedule.resultsAnnouncement ? new Date(schedule.resultsAnnouncement) : null
+      ));
+    }, 30000);
+    return () => window.clearInterval(timer);
+  }, [schedule]);
 
   const refresh = useCallback(() => load(), [load]);
 

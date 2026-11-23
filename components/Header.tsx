@@ -1,9 +1,9 @@
-import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Page } from '../types';
 import { STUDENT_AUTH_STATE } from '../student_auth_state';
 
 interface HeaderProps {
+  currentPage: Page;
   setPage: (page: Page) => void;
   isOffline: boolean;
 }
@@ -40,29 +40,40 @@ const MobileOfflineIndicator = () => (
   </div>
 );
 
-const Header = ({ setPage, isOffline }) => {
+const Header = ({ currentPage, setPage, isOffline }: HeaderProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [activeNav, setActiveNav] = useState(Page.Home);
 
-  const handleNavClick = (page) => {
+  const handleNavClick = (page: Page) => {
     setPage(page);
-    setActiveNav(page);
     setIsMenuOpen(false);
   };
 
-  const navItems = [
+  const navItems: { id: Page; label: string }[] = [
     { id: Page.Home, label: 'Home' },
     ...(STUDENT_AUTH_STATE ? [{ id: Page.StudentLogin, label: 'Student Portal' }] : []),
     { id: Page.Results, label: 'Results' },
-    { id: Page.Verification, label: 'Verify Vote' },
-    { id: Page.MeetTheTeam, label: 'Meet The Team' }
+    { id: Page.Verification, label: 'Verify Vote' }
   ];
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isMenuOpen]);
 
   return (
     <header className="bg-[#0d3b6f] text-white relative z-30 border-b border-blue-200/20 shadow-sm">
       <div className="container mx-auto px-4 sm:px-6 py-3.5 sm:py-4 flex justify-between items-center">
         <div className="flex items-center gap-3 sm:gap-4 group">
           <button
+            type="button"
             onClick={() => handleNavClick(Page.Admin)}
             className="relative transition-all duration-200 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-yellow-400 rounded"
             aria-label="Open admin dashboard"
@@ -77,15 +88,15 @@ const Header = ({ setPage, isOffline }) => {
           </button>
 
           <div className="cursor-pointer">
-            <h1
-              onClick={() => handleNavClick(Page.Home)}
-              onDoubleClick={() => handleNavClick(Page.AdminLogin)}
-              className="text-lg sm:text-xl lg:text-2xl font-semibold tracking-tight text-white hover:text-yellow-200 transition-colors duration-200"
-              role="link"
-              tabIndex={0}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleNavClick(Page.Home); }}
-            >
-              DMI-SJBU Voting System
+            <h1 className="text-lg sm:text-xl lg:text-2xl font-semibold tracking-tight">
+              <button
+                type="button"
+                onClick={() => handleNavClick(Page.Home)}
+                onDoubleClick={() => handleNavClick(Page.AdminLogin)}
+                className="text-lg sm:text-xl lg:text-2xl font-semibold tracking-tight text-white hover:text-yellow-200 transition-colors duration-200"
+              >
+                DMI-SJBU Voting System
+              </button>
             </h1>
             <p className="text-xs text-blue-200 font-medium hidden sm:block">Secure &amp; Transparent Elections</p>
           </div>
@@ -97,9 +108,10 @@ const Header = ({ setPage, isOffline }) => {
           {navItems.map((item) => (
             <button
               key={item.id}
+              type="button"
               onClick={() => handleNavClick(item.id)}
               className={`px-4 py-2 rounded-md font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-yellow-400 ${
-                activeNav === item.id
+                currentPage === item.id
                   ? 'bg-yellow-400/15 text-yellow-200 border border-yellow-300/30'
                   : 'hover:bg-blue-700/40 hover:text-yellow-200'
               }`}
@@ -110,10 +122,12 @@ const Header = ({ setPage, isOffline }) => {
         </nav>
 
         <button
+          type="button"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
           className="md:hidden p-2 rounded-lg text-white hover:bg-blue-700/50 hover:text-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 transition-all duration-300 transform hover:scale-110"
           aria-label="Toggle navigation menu"
           aria-expanded={isMenuOpen}
+          aria-controls="mobile-navigation"
         >
           <div className="transition-transform duration-300">
             {isMenuOpen ? <CloseIcon /> : <HamburgerIcon />}
@@ -122,6 +136,7 @@ const Header = ({ setPage, isOffline }) => {
       </div>
 
       <nav
+        id="mobile-navigation"
         className={`md:hidden bg-[#0f3c70] absolute top-full left-0 w-full shadow-md border-t border-blue-200/20 transform transition-all duration-200 ease-out ${
           isMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'
         }`}
@@ -137,9 +152,11 @@ const Header = ({ setPage, isOffline }) => {
           {navItems.map((item, index) => (
             <button
               key={item.id}
+              type="button"
+              tabIndex={isMenuOpen ? 0 : -1}
               onClick={() => handleNavClick(item.id)}
               className={`block w-full text-left px-4 py-3 rounded-md text-base font-medium transition-all duration-200 focus:outline-none ${
-                activeNav === item.id
+                currentPage === item.id
                   ? 'bg-yellow-400/15 text-yellow-200'
                   : 'hover:bg-blue-700/40 hover:text-yellow-200'
               }`}
@@ -150,7 +167,7 @@ const Header = ({ setPage, isOffline }) => {
             >
               <span className="relative z-10">
                 {item.label}
-                {activeNav === item.id && (
+                {currentPage === item.id && (
                   <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-yellow-300 rounded-full"></span>
                 )}
               </span>

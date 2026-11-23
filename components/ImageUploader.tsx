@@ -36,7 +36,7 @@ const compressImage = (file: File, maxWidth = 500, quality = 0.8): Promise<strin
 const uploadToCloudinary = async (file: File): Promise<string> => {
   const compressedBase64 = await compressImage(file);
   const signatureResponse = await sjbuApi.getCloudinarySignature();
-  const { signature, timestamp, cloud_name, api_key, folder } = signatureResponse.data;
+  const { signature, timestamp, cloud_name, api_key, folder } = signatureResponse.data.data;
   const cloudName = cloud_name;
   const apiKey = api_key;
   if (!signature || !cloudName || !apiKey) {

@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
-import { Position, Candidate, AdminUser, AuditLogEntry, AdminRole } from '../types';
+import { Position, Candidate, AdminUser, AuditLogEntry } from '../types';
 import { usePermissions, Permissions } from '../hooks/usePermissions';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -84,7 +84,7 @@ const Sidebar: React.FC<{ activeView: AdminView; setActiveView: (view: AdminView
         { id: 'candidates', label: 'Candidates', icon: <CandidatesIcon />, permitted: permissions.canViewCandidates },
         { id: 'users', label: 'User Management', icon: <UsersIcon />, permitted: permissions.canViewUsers },
         { id: 'audit', label: 'Audit Log', icon: <AuditIcon />, permitted: permissions.canViewAuditLog },
-        { id: 'settings', label: 'Settings', icon: <SettingsIcon />, permitted: permissions.canEditSettings },
+        { id: 'settings', label: 'Settings', icon: <SettingsIcon />, permitted: permissions.canViewSettings },
     ];
 
     return (
@@ -118,7 +118,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
     const { adminUsers, isLoading: isAdminUsersLoading, error: adminUsersError, fetchAdminUsers } = useAdminUsers();
     const { positions, isLoading: isPositionsLoading, error: positionsError, fetchPositions } = useAllPositions();
 
-    const { schedule, phase: schedulePhase, loading: scheduleLoading, refresh: refreshSchedule } = useElectionSchedule(15000);
+    const { schedule, phase: schedulePhase, loading: scheduleLoading, refresh: refreshSchedule } = useElectionSchedule();
 
     const handleOpenModal = (type: ModalType, data?: any) => setModal({ isOpen: true, type, data });
     const handleCloseModal = () => setModal({ isOpen: false, type: null });
@@ -130,7 +130,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
             candidates: 'canViewCandidates',
             users: 'canViewUsers',
             audit: 'canViewAuditLog',
-            settings: 'canEditSettings',
+            settings: 'canViewSettings',
         };
 
         if (!permissions[viewPermissions[activeView]]) {
@@ -166,7 +166,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
                  if (isAdminUsersLoading) return <Card className="p-6 text-center"><Spinner /><p className="mt-2 text-sm">Loading Admin Users...</p></Card>
                  if (adminUsersError && adminUsers.length === 0) return <Card className="p-6 text-center text-red-600"><p>{adminUsersError}</p><Button onClick={fetchAdminUsers}>Retry</Button></Card>
                  return <UserManagementView adminUsers={adminUsers} permissions={permissions} onOpenModal={handleOpenModal} onRefresh={handleDataRefresh} />;
-            case 'audit': return <AuditLogView permissions={permissions} currentUser={currentUser} />;
+            case 'audit': return <AuditLogView permissions={permissions} />;
             case 'settings': return <SettingsView permissions={permissions} onStartCountdown={props.onStartCountdown} />;
             default: return <DashboardView permissions={permissions} />;
         }
@@ -234,7 +234,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ permissions }) => {
                         <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
                         </svg>
-                        <strong>Read-Only Access:</strong> You are viewing this dashboard in read-only mode as a Moderator.
+                        <strong>Read-Only Access:</strong> Your role allows viewing but not managing these records.
                     </p>
                 </Card>
             )}
@@ -379,7 +379,7 @@ interface SettingsViewProps {
     onStartCountdown: (hours: number) => void;
 }
 const SettingsView: React.FC<SettingsViewProps> = ({ permissions, onStartCountdown }) => {
-    const { schedule, phase, loading: scheduleLoading, refresh } = useElectionSchedule(30000);
+    const { schedule, phase, loading: scheduleLoading, refresh } = useElectionSchedule();
     const [startInput, setStartInput] = useState('');
     const [endInput, setEndInput] = useState('');
     const [resultsInput, setResultsInput] = useState('');
@@ -388,9 +388,9 @@ const SettingsView: React.FC<SettingsViewProps> = ({ permissions, onStartCountdo
 
     useEffect(() => {
         if (schedule) {
-            setStartInput(schedule.startDate ?? '');
-            setEndInput(schedule.endDate ?? '');
-            setResultsInput(schedule.resultsAnnouncement ?? '');
+            setStartInput(schedule.startDate ? new Date(schedule.startDate).toISOString().slice(0, 16) : '');
+            setEndInput(schedule.endDate ? new Date(schedule.endDate).toISOString().slice(0, 16) : '');
+            setResultsInput(schedule.resultsAnnouncement ? new Date(schedule.resultsAnnouncement).toISOString().slice(0, 16) : '');
         }
     }, [schedule]);
 
@@ -401,9 +401,9 @@ const SettingsView: React.FC<SettingsViewProps> = ({ permissions, onStartCountdo
         setMsg(null);
         try {
             await updateSchedule({
-                startDate: new Date(startInput).toISOString(),
-                endDate: new Date(endInput).toISOString(),
-                resultsAnnouncement: resultsInput ? new Date(resultsInput).toISOString() : null
+                startDate: new Date(`${startInput}:00Z`).toISOString(),
+                endDate: new Date(`${endInput}:00Z`).toISOString(),
+                resultsAnnouncement: resultsInput ? new Date(`${resultsInput}:00Z`).toISOString() : null
             });
             setMsg('Schedule saved');
             await refresh();
@@ -416,6 +416,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ permissions, onStartCountdo
     };
 
     return (
+      <div className="space-y-6">
         <Card>
             <div className="p-4 border-b">
                 <h2 className="text-lg font-bold text-dmi-blue-900">Election Settings</h2>
@@ -424,23 +425,23 @@ const SettingsView: React.FC<SettingsViewProps> = ({ permissions, onStartCountdo
 
             <form onSubmit={handleSaveSchedule} className="p-4 space-y-4">
                 {!permissions.canEditSettings && (
-                    <div className="bg-dmi-blue-50 text-dmi-blue-800 p-2 rounded-lg text-sm">Settings can only be modified by a Super Admin.</div>
+                    <div className="bg-dmi-blue-50 text-dmi-blue-800 p-2 rounded-lg text-sm">Your role does not have permission to change election settings.</div>
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Election Start Date (UTC)</label>
-                        <input type="datetime-local" value={startInput ? startInput.replace('Z','') : ''} onChange={e => setStartInput(new Date(e.target.value).toISOString())} disabled={!permissions.canEditSettings} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-dmi-blue-500 focus:ring-dmi-blue-500 disabled:bg-gray-100" />
+                        <input type="datetime-local" value={startInput} onChange={e => setStartInput(e.target.value)} disabled={!permissions.canEditSettings} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-dmi-blue-500 focus:ring-dmi-blue-500 disabled:bg-gray-100" />
                     </div>
                      <div>
                         <label className="block text-sm font-medium text-gray-700">Election End Date (UTC)</label>
-                        <input type="datetime-local" value={endInput ? endInput.replace('Z','') : ''} onChange={e => setEndInput(new Date(e.target.value).toISOString())} disabled={!permissions.canEditSettings} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-dmi-blue-500 focus:ring-dmi-blue-500 disabled:bg-gray-100" />
+                        <input type="datetime-local" value={endInput} onChange={e => setEndInput(e.target.value)} disabled={!permissions.canEditSettings} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-dmi-blue-500 focus:ring-dmi-blue-500 disabled:bg-gray-100" />
                     </div>
                 </div>
 
                  <div>
                     <label className="block text-sm font-medium text-gray-700">Results Announcement (UTC, optional)</label>
-                    <input type="datetime-local" value={resultsInput ? resultsInput.replace('Z','') : ''} onChange={e => setResultsInput(new Date(e.target.value).toISOString())} disabled={!permissions.canEditSettings} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-dmi-blue-500 focus:ring-dmi-blue-500 disabled:bg-gray-100" />
+                    <input type="datetime-local" value={resultsInput} onChange={e => setResultsInput(e.target.value)} disabled={!permissions.canEditSettings} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-dmi-blue-500 focus:ring-dmi-blue-500 disabled:bg-gray-100" />
                 </div>
 
                  <div className="pt-2 flex justify-end">
@@ -453,15 +454,134 @@ const SettingsView: React.FC<SettingsViewProps> = ({ permissions, onStartCountdo
                 {msg && <p className="text-sm text-gray-700">{msg}</p>}
             </div>
         </Card>
+        {permissions.canManageRoles && <RoleManagementPanel />}
+      </div>
+    );
+};
+
+interface RolePermissionOption {
+    key: string;
+    label: string;
+}
+
+interface RoleDefinition {
+    key: string;
+    name: string;
+    permissions: string[];
+    isSystem: boolean;
+}
+
+const RoleManagementPanel: React.FC = () => {
+    const [roles, setRoles] = useState<RoleDefinition[]>([]);
+    const [permissionOptions, setPermissionOptions] = useState<RolePermissionOption[]>([]);
+    const [name, setName] = useState('');
+    const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+    const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+
+    const loadRoleData = useCallback(async () => {
+        try {
+            const [rolesResponse, permissionsResponse] = await Promise.all([
+                sjbuApi.get('/admin/roles'),
+                sjbuApi.get('/admin/permissions'),
+            ]);
+            setRoles(rolesResponse.data.data);
+            setPermissionOptions(permissionsResponse.data.data);
+        } catch (loadError) {
+            console.error('Failed to load role definitions', loadError);
+            setError('Could not load roles and permissions.');
+        }
+    }, []);
+
+    useEffect(() => {
+        loadRoleData();
+    }, [loadRoleData]);
+
+    const togglePermission = (permission: string) => {
+        setSelectedPermissions((current) => current.includes(permission)
+            ? current.filter((value) => value !== permission)
+            : [...current, permission]);
+    };
+
+    const createRole = async (event: React.FormEvent) => {
+        event.preventDefault();
+        setError('');
+        setIsLoading(true);
+        try {
+            await sjbuApi.post('/admin/roles', { name, permissions: selectedPermissions });
+            setName('');
+            setSelectedPermissions([]);
+            await loadRoleData();
+        } catch (createError) {
+            const message = isAxiosError(createError)
+                ? createError.response?.data?.error || 'Failed to create role.'
+                : 'Failed to create role.';
+            setError(message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <Card>
+            <div className="p-4 border-b">
+                <h2 className="text-lg font-bold text-dmi-blue-900">Roles & Permissions</h2>
+                <p className="text-sm text-gray-500">Create custom roles and choose their server-enforced permissions.</p>
+            </div>
+            <form onSubmit={createRole} className="p-4 space-y-4">
+                {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
+                <label className="block text-sm font-medium text-gray-700">
+                    Role name
+                    <input
+                        value={name}
+                        onChange={(event) => setName(event.target.value)}
+                        required
+                        minLength={2}
+                        maxLength={40}
+                        className="mt-1 block w-full rounded-md border-gray-300"
+                    />
+                </label>
+                <fieldset>
+                    <legend className="text-sm font-medium text-gray-700">Permissions</legend>
+                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {permissionOptions.map((permission) => (
+                            <label key={permission.key} className="flex items-center gap-2 text-sm text-gray-700">
+                                <input
+                                    type="checkbox"
+                                    checked={selectedPermissions.includes(permission.key)}
+                                    onChange={() => togglePermission(permission.key)}
+                                />
+                                {permission.label}
+                            </label>
+                        ))}
+                    </div>
+                </fieldset>
+                <div className="flex justify-end">
+                    <Button type="submit" disabled={isLoading || !name.trim()}>
+                        {isLoading ? <Spinner /> : 'Create Role'}
+                    </Button>
+                </div>
+            </form>
+            <div className="border-t divide-y">
+                {roles.map((role) => (
+                    <div key={role.key} className="p-4">
+                        <div className="flex items-center gap-2">
+                            <strong className="text-dmi-blue-900">{role.name}</strong>
+                            {role.isSystem && <span className="text-xs text-gray-500">Built-in</span>}
+                        </div>
+                        <p className="mt-1 text-xs text-gray-600">{role.permissions.join(', ') || 'No permissions'}</p>
+                    </div>
+                ))}
+            </div>
+        </Card>
     );
 };
 
 // AuditLogView
 interface AuditLogViewProps {
     permissions: Permissions;
-    currentUser: AdminUser;
 }
-const AuditLogView: React.FC<AuditLogViewProps> = ({ permissions, currentUser }) => {
+const AuditLogView: React.FC<AuditLogViewProps> = ({ permissions }) => {
     const { logs, isLoading, error, fetchLogs } = useAuditLogs(); 
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
@@ -489,18 +609,12 @@ const AuditLogView: React.FC<AuditLogViewProps> = ({ permissions, currentUser })
         return 'bg-gray-100 text-gray-800';
     };
 
-    const isReadOnly = currentUser.role === 'moderator';
-
     return (
         <Card>
             <div className="p-3 flex flex-col sm:flex-row sm:justify-between sm:items-center border-b gap-3">
                 <div>
                     <h2 className="text-lg font-bold text-dmi-blue-900">Admin Audit Log</h2>
-                    {isReadOnly && (
-                        <p className="text-sm text-blue-600 mt-1">
-                            <strong>Read-Only Access:</strong> Viewing logs as Moderator
-                        </p>
-                    )}
+                    <p className="text-sm text-blue-600 mt-1">Audit entries are read-only.</p>
                     <p className="text-xs text-gray-500 mt-1">
                         Showing {filteredLogs.length > 0 ? indexOfFirstLog + 1 : 0} - {Math.min(indexOfLastLog, filteredLogs.length)} of {filteredLogs.length} logs
                     </p>
@@ -817,11 +931,7 @@ const UserManagementView: React.FC<UserManagementViewProps> = ({ adminUsers, per
                             <tr key={user.id} className="border-b">
                                 <td className="p-3 font-semibold text-dmi-blue-800">{user.username}</td>
                                 <td className="p-3">
-                                     <span className={`px-2 py-1 text-xs font-semibold rounded-full ${ 
-                                         user.role === 'super_admin' ? 'bg-dmi-gold-500 text-white' : 
-                                         user.role === 'admin' ? 'bg-dmi-blue-100 text-dmi-blue-800' :
-                                         'bg-gray-200 text-gray-800'
-                                     }`}>
+                                     <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-200 text-gray-800">
                                          {user.role.replace('_', ' ').toUpperCase()}
                                     </span>
                                 </td>
@@ -986,9 +1096,9 @@ const PositionForm = ({ type, position, onSuccess, onCancel }: { type: 'ADD_POSI
 
         try {
             if (type === 'ADD_POSITION') {
-                await sjbuApi.post('/positions', { position_name: name });
+                await sjbuApi.post('/positions', { positionName: name });
             } else {
-                await sjbuApi.put(`/positions/${position!.id}`, { position_name: name });
+                await sjbuApi.patch(`/positions/${position!.id}`, { positionName: name });
             }
             onSuccess();
         } catch (err) {
@@ -1096,18 +1206,34 @@ const CandidateForm = ({ type, candidate, positionId, onSuccess, onCancel }: { t
 
 // UserForm
 const UserForm = ({ type, user, onSuccess, onCancel }: { type: 'ADD_USER' | 'EDIT_USER', user?: AdminUser, onSuccess: () => void, onCancel: () => void }) => {
+    const [roles, setRoles] = useState<Array<{ key: string; name: string }>>([]);
     const [formData, setFormData] = useState({
         username: user?.username || '',
         email: user?.email || '',
         password: '',
-        role: user?.role || 'moderator' as AdminRole,
+        role: user?.role || '',
     });
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const isEditing = !!user;
 
+    useEffect(() => {
+        sjbuApi.get('/admin/roles')
+            .then((response) => {
+                const availableRoles = response.data.data as Array<{ key: string; name: string }>;
+                setRoles(availableRoles);
+                if (!user && availableRoles.length > 0) {
+                    setFormData((current) => ({ ...current, role: availableRoles[0].key }));
+                }
+            })
+            .catch((loadError) => {
+                console.error('Failed to load available admin roles', loadError);
+                setError('Could not load roles. Please retry.');
+            });
+    }, [user]);
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value as AdminRole | string });
+        setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -1155,10 +1281,8 @@ const UserForm = ({ type, user, onSuccess, onCancel }: { type: 'ADD_USER' | 'EDI
             </div>
              <div>
                 <label className="block text-sm font-medium text-gray-700">Role</label>
-                <select name="role" value={formData.role} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-dmi-blue-500 focus:ring-dmi-blue-500">
-                    <option value="moderator">Moderator</option>
-                    <option value="admin">Admin</option>
-                    <option value="super_admin">Super Admin</option>
+                <select name="role" value={formData.role} onChange={handleChange} required disabled={roles.length === 0} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-dmi-blue-500 focus:ring-dmi-blue-500">
+                    {roles.map((role) => <option key={role.key} value={role.key}>{role.name}</option>)}
                 </select>
             </div>
             <div className="flex justify-end space-x-3 pt-3">

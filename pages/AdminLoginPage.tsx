@@ -27,18 +27,24 @@ const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess }) => {
 
     try {
         // API Endpoint: POST /admin/login
-        const response = await sjbuApi.post('/admin/login', {
+        const response = await sjbuApi.post<{
+            success?: boolean;
+            data?: AdminUser | null;
+            admin?: AdminUser | null;
+        }>('/admin/login', {
             email: username, // CHANGED from 'username' to 'email'
             password: password,
         });
         
         // The API successfully sets the admin token cookie
         if (response.status === 200) {
-            // The API response body contains the admin profile: { "admin": { ... } } (Inferred/Page 3)
-            const adminProfile: AdminUser = response.data.admin;
-            
-            // Successful login
-            onLoginSuccess(adminProfile); 
+            const adminProfile = response.data.data ?? response.data.admin;
+
+            if (adminProfile) {
+                onLoginSuccess(adminProfile);
+            } else {
+                setError('Login succeeded, but the server did not return an admin profile.');
+            }
         } else {
             // This is a safety net; axios typically throws for non-2xx status
             setError('An unexpected server response occurred.');

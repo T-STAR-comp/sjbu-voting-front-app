@@ -30,12 +30,13 @@ export interface StudentPortalUser {
   year: string;
 }
 
-export type AdminRole = 'super_admin' | 'admin' | 'moderator';
+export type AdminRole = string;
 
 export interface AdminUser {
   id: number;
   username: string;
   role: AdminRole;
+  permissions: string[];
   email: string;
   isActive?: boolean;
   lastLogin?: string;

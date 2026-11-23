@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import sjbuApi from '../src/api/sjbuApi';
 import { isAxiosError } from 'axios';
 import { Position, Candidate } from '../types';
+import { subscribeToServerChanges } from '../src/api/serverEvents';
 
 interface PositionWithCandidates extends Position {
   candidates: Candidate[];
@@ -59,6 +60,10 @@ export const useAllPositions = (): AllPositionsState => {
   useEffect(() => {
     fetchPositions();
   }, [fetchPositions]);
+
+  useEffect(() => subscribeToServerChanges(sjbuApi, (change) => {
+    if (change === 'positions') fetchPositions();
+  }), [fetchPositions]);
 
   return { positions, isLoading, error, fetchPositions };
 };

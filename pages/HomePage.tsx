@@ -55,9 +55,9 @@ const HomePage: FC<HomePageProps> = ({ setPage, electionStatus, electionStartDat
     <div className="container mx-auto px-4 py-6">
       <div className="text-center bg-white rounded-xl shadow-lg p-6 mb-8">
         <h2 className="text-2xl md:text-4xl font-extrabold text-dmi-blue-900">Shape Your University's Future</h2>
-        <h1 className="text-lg md:text-2xl font-bold text-dmi-blue-700 mt-2">Secure & Simple Electronic Voting for the 2025 Student Elections</h1>
+        <h1 className="text-lg md:text-2xl font-bold text-dmi-blue-700 mt-2">Secure & Simple Electronic Voting for the 2026 Student Elections</h1>
         <p className="mt-3 text-sm md:text-base text-gray-600 max-w-3xl mx-auto">
-          Your Voice. Your Vote. Your DEMWAYE. Participate in building a better campus community.
+          Your Voice, Your Vote, Participate in building a better campus community.
         </p>
 
         <div className="my-6 p-4 bg-dmi-blue-700 rounded-xl">

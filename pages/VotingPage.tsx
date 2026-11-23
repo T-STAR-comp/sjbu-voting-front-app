@@ -40,7 +40,7 @@ const VotingPage: React.FC<VotingPageProps> = ({
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [modalCandidate, setModalCandidate] = useState<Candidate | null>(null);
 
-  const { schedule, phase, loading: scheduleLoading } = useElectionSchedule(10000);
+  const { schedule, phase, loading: scheduleLoading } = useElectionSchedule();
 
   // Load saved selections
   useEffect(() => {

@@ -14,8 +14,8 @@ export type ScheduleDto = {
 };
 
 export const fetchSchedule = async (): Promise<ScheduleDto> => {
-  const res = await sjbuApi.get('/election/schedule'); // mounted at /api/app/election
-  return res.data;
+  const res = await sjbuApi.get('/election/schedule');
+  return res.data.data;
 };
 
 export const updateSchedule = async (payload: {
@@ -23,8 +23,8 @@ export const updateSchedule = async (payload: {
   endDate: string;
   resultsAnnouncement?: string | null;
 }) => {
-  const res = await sjbuApi.post('/election/schedule', payload);
-  return res.data;
+  const res = await sjbuApi.put('/election/schedule', payload);
+  return res.data.data;
 };
 
 // --- UPDATED INTERFACES FOR CANDIDATE MANAGEMENT (STRICT SCHEMA) ---
@@ -46,7 +46,7 @@ interface CandidateData {
 // Interface for updating a candidate (matches UpdateCandidateData in backend)
 interface UpdateCandidatePayload {
     name?: string;
-    positionId?: number;
+    positionId: number;
     imageUrl?: string;
     manifesto?: string; // CRITICAL FIX: Changed from 'bio' to 'manifesto'
 }
@@ -62,9 +62,11 @@ interface CandidateResponse {
 }
 // --- END NEW INTERFACES ---
 
-// Get base URL from environment variable
- const baseURL = process.env.REACT_APP_API_URL;
-/// const baseURL = 'http://localhost:3005/api/app'; 
+const configuredApiUrl = process.env.REACT_APP_API_URL || '/api/v1';
+const apiRoot = configuredApiUrl
+  .replace(/\/api\/app\/?$/, '/api/v1')
+  .replace(/\/+$/, '');
+const baseURL = /\/api\/v1$/.test(apiRoot) ? apiRoot : `${apiRoot}/api/v1`;
 
 
 // Create an Axios instance
@@ -119,7 +121,6 @@ API.interceptors.response.use(
  * @returns {Promise<AxiosResponse<any>>} Object containing signature, timestamp, cloudName, etc.
  */
 const getCloudinarySignature = (): Promise<AxiosResponse<any>> => {
-  // Targets the POST /api/app/admin/sign-upload endpoint
   return API.post('/admin/sign-upload'); 
 };
 
@@ -129,14 +130,14 @@ const getCloudinarySignature = (): Promise<AxiosResponse<any>> => {
  * Creates a new candidate.
  */
 const createCandidate = (data: CandidateData): Promise<AxiosResponse<{ candidate: CandidateResponse }>> => {
-    return API.post('/admin/candidate', data);
+    return API.post(`/positions/${data.positionId}/candidates`, data);
 };
 
 /**
  * Updates an existing candidate.
  */
 const updateCandidate = (candidateId: number, data: UpdateCandidatePayload): Promise<AxiosResponse<{ candidate: CandidateResponse }>> => {
-    return API.put(`/admin/candidate/${candidateId}`, data);
+    return API.patch(`/positions/${data.positionId}/candidates/${candidateId}`, data);
 };
 
 /**
@@ -144,8 +145,23 @@ const updateCandidate = (candidateId: number, data: UpdateCandidatePayload): Pro
  * This function addresses the Vice-President/Position fetching issue.
  */
 const getAllPositionsWithCandidates = (): Promise<AxiosResponse<{ positions: PositionWithCandidatesResponse[] }>> => {
-    // Targets the GET /api/app/election/positions endpoint
-    return API.get('/election/positions'); 
+    return API.get('/positions').then(async (response) => {
+      const positions = response.data.data as Array<{ id: number; positionName: string; isVotable: boolean }>;
+      const enrichedPositions = await Promise.all(
+        positions.map(async (position) => {
+          const candidatesResponse = await API.get(`/positions/${position.id}/candidates`);
+          return {
+            id: position.id,
+            name: position.positionName,
+            candidates: candidatesResponse.data.data,
+          };
+        })
+      );
+      return {
+        ...response,
+        data: { positions: enrichedPositions },
+      };
+    });
 };
 
 // CRITICAL FIX: Extend the type definition to include all new functions

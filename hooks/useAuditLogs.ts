@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import sjbuApi from '../src/api/sjbuApi';
 import { AuditLogEntry } from '../types'; 
+import { isAxiosError } from 'axios';
 
 interface AuditLogState {
     logs: AuditLogEntry[];
@@ -47,7 +48,7 @@ export const useAuditLogs = (): AuditLogState => {
 
         } catch (e) {
             let message = 'Failed to load audit logs.';
-            if (sjbuApi.isAxiosError(e) && e.response) {
+            if (isAxiosError(e) && e.response) {
                 if (e.response.status === 403) {
                      message = 'Insufficient permissions to view audit logs.';
                 } else if (e.response.status === 404) {
@@ -70,7 +71,6 @@ export const useAuditLogs = (): AuditLogState => {
 
     return { logs, isLoading, error, fetchLogs };
 };
-
 
 
 

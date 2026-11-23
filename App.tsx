@@ -22,8 +22,6 @@ import HowToVotePage from './pages/HowToVotePage';
 import TermsOfUsePage from './pages/TermsOfUsePage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import ContactHelpPage from './pages/ContactHelpPage';
-import MeetTheTeamPage from './pages/MeetTheTeamPage';
-import WelcomeTeamModal from './components/WelcomeTeamModal'; // ← NEW
 import Card from './components/Card';
 import Button from './components/Button';
 import { useAllPositions } from './hooks/useAllPositions';
@@ -42,9 +40,6 @@ const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>(Page.Intro);
   const [verificationCode, setVerificationCode] = useState<string>('');
   const [userVoucher, setUserVoucher] = useState<string>('');
-
-  // Welcome Modal State — shows only once per user
-  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
   const {
     positions: livePositions,
@@ -73,7 +68,7 @@ const App: React.FC = () => {
   const [electionStartDate, setElectionStartDate] = useState<Date>(ELECTION_START_DATE);
   const [electionEndDate, setElectionEndDate] = useState<Date>(ELECTION_END_DATE);
 
-  const { schedule: appSchedule, phase: appPhase, loading: scheduleLoading, refresh: refreshSchedule } = useElectionSchedule(15000);
+  const { schedule: appSchedule, phase: appPhase, loading: scheduleLoading, refresh: refreshSchedule } = useElectionSchedule();
 
   const mapPhaseToElectionStatus = (phase: string | undefined): ElectionStatus => {
     switch (phase) {
@@ -126,15 +121,6 @@ const App: React.FC = () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []);
-
-  // Show Welcome Modal only once per user
-  useEffect(() => {
-    const hasSeen = localStorage.getItem('hasSeenTeamWelcome');
-    if (!hasSeen) {
-      setShowWelcomeModal(true);
-      localStorage.setItem('hasSeenTeamWelcome', 'true');
-    }
   }, []);
 
   const handleUserLoginSuccess = (voucher: string) => {
@@ -297,7 +283,7 @@ const App: React.FC = () => {
       case Page.TermsOfUse:
         return <TermsOfUsePage />;
       case Page.MeetTheTeam:
-        return <MeetTheTeamPage />;
+        return <HomePage setPage={setCurrentPage} electionStatus={electionStatus} electionStartDate={electionStartDate} electionEndDate={electionEndDate} />;
       case Page.PrivacyPolicy:
         return <PrivacyPolicyPage />;
       case Page.ContactHelp:
@@ -314,21 +300,12 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#f3f5f8] text-slate-900" style={{ fontFamily: '"Segoe UI", "Helvetica Neue", Arial, sans-serif' }}>
-      {currentPage !== Page.Intro && <Header setPage={setCurrentPage} isOffline={isOffline} />}
+      {currentPage !== Page.Intro && <Header currentPage={currentPage} setPage={setCurrentPage} isOffline={isOffline} />}
       <main className="flex-grow">
         {renderPage()}
       </main>
       {currentPage !== Page.Intro && <Footer setPage={setCurrentPage} />}
 
-      {/* Welcome Modal — appears once per user */}
-      <WelcomeTeamModal
-        isOpen={showWelcomeModal}
-        onClose={() => setShowWelcomeModal(false)}
-        onGoToTeam={() => {
-          setShowWelcomeModal(false);
-          setCurrentPage(Page.MeetTheTeam);
-        }}
-      />
     </div>
   );
 };

@@ -8,12 +8,19 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
       server: {
-        port: 3000,
+        port: 5173,
         host: '0.0.0.0',
+        proxy: {
+          '/api/v1': {
+            target: env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:3000',
+            changeOrigin: true,
+            secure: false,
+          },
+        },
       },
       plugins: [react()],
       define: {
-        'process.env': env,
+        'process.env.REACT_APP_API_URL': JSON.stringify(env.REACT_APP_API_URL || ''),
       },
       resolve: {
         alias: {
