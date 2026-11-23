@@ -1,11 +1,10 @@
 import * as React from 'react';
-import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 import { Position, Page } from '../types';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Spinner from '../components/Spinner'; 
-import { useOverallStats } from '../hooks/useOverallStats';
+import { useLiveStatsPolling } from '../hooks/useLiveStatsPolling';
 
 interface ResultsPageProps {
     positions: Position[]; 
@@ -13,7 +12,7 @@ interface ResultsPageProps {
 }
 
 const ResultsPage: React.FC<ResultsPageProps> = ({ setPage }) => {
-        const { stats, isLoading, error } = useOverallStats();
+        const { stats, isLoading, error, statusMessage } = useLiveStatsPolling();
 
         if (isLoading) {
                 return (
@@ -25,6 +24,10 @@ const ResultsPage: React.FC<ResultsPageProps> = ({ setPage }) => {
 
         if (error) {
                 return <div className="container px-4 py-8 text-center text-red-500">Error: {error}</div>;
+        }
+
+        if (statusMessage) {
+                return <div className="container px-4 py-8 text-center text-gray-600">{statusMessage}</div>;
         }
 
         if (!stats) {

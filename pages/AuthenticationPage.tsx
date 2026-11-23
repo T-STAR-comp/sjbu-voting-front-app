@@ -133,7 +133,7 @@ const AuthenticationPage: React.FC<AuthenticationPageProps> = ({
           <Card className="max-w-md w-full p-8 text-center">
             <h2 className="text-2xl font-bold text-dmi-blue-900">Voting Has Ended</h2>
             <p className="text-gray-600 mt-4 text-sm">
-              The voting period for the 2025 Student Elections is now closed. Thank you for your participation.
+              The voting period for the 2026/2027 Student Elections is now closed. Thank you for your participation.
             </p>
             <Button className="mt-4" onClick={() => setPage(Page.Results)}>
               View Official Results

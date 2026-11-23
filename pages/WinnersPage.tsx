@@ -1,8 +1,8 @@
 // web/pages/WinnersPage.tsx
 import * as React from 'react';
 import { ElectionStatus } from '../types';
-import { useOverallStats } from '../hooks/useOverallStats';
 import { useAllPositions } from '../hooks/useAllPositions';
+import { useLiveStatsPolling } from '../hooks/useLiveStatsPolling';
 import { handleCandidateImageError } from '../src/utils/candidateImage';
 
 interface WinnersPageProps {
@@ -36,7 +36,7 @@ const BicycleIcon = () => (
 
 const WinnersPage: React.FC<WinnersPageProps> = ({ electionStatus }) => {
   const { positions, isLoading: positionsLoading } = useAllPositions();
-  const { stats, isLoading: statsLoading } = useOverallStats();
+  const { stats, isLoading: statsLoading, error: statsError, statusMessage } = useLiveStatsPolling();
 
   if (positionsLoading || statsLoading) {
     return (
@@ -56,6 +56,19 @@ const WinnersPage: React.FC<WinnersPageProps> = ({ electionStatus }) => {
           <h1 className="text-4xl font-black text-dmi-blue-950 mb-4">Election Still Ongoing</h1>
           <p className="text-lg text-gray-700">Official winners will be announced here once voting has concluded.</p>
           <div className="mt-8 h-1 w-32 bg-dmi-gold-500 mx-auto rounded-full"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (statsError || statusMessage || !stats) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center py-20 px-4">
+        <div className="text-center max-w-2xl">
+          <h1 className="text-4xl font-black text-dmi-blue-950 mb-4">Official Results Not Available</h1>
+          <p className="text-lg text-gray-700">
+            {statsError || statusMessage || 'Final results have not been announced yet.'}
+          </p>
         </div>
       </div>
     );
@@ -87,7 +100,7 @@ const WinnersPage: React.FC<WinnersPageProps> = ({ electionStatus }) => {
       <div className="text-center mb-16">
         <h1 className="text-5xl md:text-6xl font-black text-dmi-blue-950">OFFICIAL WINNERS</h1>
         <p className="text-xl md:text-2xl text-dmi-blue-700 font-light mt-4">
-          2025–2026 Student Leadership Election Results
+          2026/2027 Student Leadership Election Results
         </p>
         <div className="flex justify-center gap-8 mt-6">
           <div className="h-px w-32 bg-dmi-gold-500"></div>
@@ -98,7 +111,8 @@ const WinnersPage: React.FC<WinnersPageProps> = ({ electionStatus }) => {
       <div className="max-w-6xl mx-auto space-y-14">
         {enrichedPositions.map(position => {
           const winner = position.candidates[0];
-          const runnersUp = position.candidates.slice(1);
+          const vice = position.runnerUpIsVice ? position.candidates[1] : undefined;
+          const runnersUp = position.candidates.slice(position.runnerUpIsVice ? 2 : 1);
 
           if (!winner) return null;
 
@@ -146,6 +160,18 @@ const WinnersPage: React.FC<WinnersPageProps> = ({ electionStatus }) => {
                   </div>
                 </div>
               </div>
+
+              {vice && (
+                <div className="px-8 py-6 bg-dmi-blue-50 border-t border-dmi-blue-100">
+                  <h4 className="text-xl font-bold text-dmi-blue-900 text-center mb-2">
+                    Vice {position.name}
+                  </h4>
+                  <p className="text-lg font-semibold text-dmi-blue-800 text-center">{vice.name}</p>
+                  <p className="text-sm text-gray-600 text-center mt-1">
+                    {vice.voteCount.toLocaleString()} votes ({vice.votePercentage.toFixed(2)}%)
+                  </p>
+                </div>
+              )}
 
               {/* Runners-Up – Bicycle Icon, no numbering */}
               {runnersUp.length > 0 && (

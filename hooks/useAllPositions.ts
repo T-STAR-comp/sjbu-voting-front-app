@@ -37,6 +37,7 @@ export const useAllPositions = (): AllPositionsState => {
         id: p.id,
         name: p.name,
         isVotable: p.isVotable,
+        runnerUpIsVice: p.runnerUpIsVice,
         candidates: p.candidates.map((c: any) => ({
           id: c.id,
           name: c.name,

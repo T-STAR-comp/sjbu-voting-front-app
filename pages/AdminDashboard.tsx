@@ -773,7 +773,10 @@ const PositionsView: React.FC<PositionsViewProps> = ({ positions, permissions, o
                 <tbody>
                     {positions.length > 0 ? positions.map(pos => (
                         <tr key={pos.id} className="border-b hover:bg-gray-50"> 
-                            <td className="px-3 py-3 font-semibold text-dmi-blue-800">{pos.name}</td>
+                            <td className="px-3 py-3 font-semibold text-dmi-blue-800">
+                                {pos.name}
+                                {pos.runnerUpIsVice && <span className="ml-2 text-xs font-medium text-dmi-blue-600">First runner-up becomes vice</span>}
+                            </td>
                             <td className="px-3 py-3 text-center">{pos.candidates.length}</td>
                             <td className="px-3 py-3">
                                 <div className="flex justify-center space-x-2">
@@ -1100,6 +1103,7 @@ const ManagementModals: React.FC<ManagementModalsProps> = ({ modalState, onClose
 // PositionForm
 const PositionForm = ({ type, position, onSuccess, onCancel }: { type: 'ADD_POSITION' | 'EDIT_POSITION', position?: PositionWithCandidates, onSuccess: () => void, onCancel: () => void }) => {
     const [name, setName] = useState(position?.name || '');
+    const [runnerUpIsVice, setRunnerUpIsVice] = useState(position?.runnerUpIsVice ?? false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -1110,9 +1114,9 @@ const PositionForm = ({ type, position, onSuccess, onCancel }: { type: 'ADD_POSI
 
         try {
             if (type === 'ADD_POSITION') {
-                await sjbuApi.post('/positions', { positionName: name });
+                await sjbuApi.post('/positions', { positionName: name, runnerUpIsVice });
             } else {
-                await sjbuApi.patch(`/positions/${position!.id}`, { positionName: name });
+                await sjbuApi.patch(`/positions/${position!.id}`, { positionName: name, runnerUpIsVice });
             }
             onSuccess();
         } catch (err) {
@@ -1129,6 +1133,15 @@ const PositionForm = ({ type, position, onSuccess, onCancel }: { type: 'ADD_POSI
                 <label htmlFor="pos-name" className="block text-sm font-medium text-gray-700">Position Name</label>
                 <input type="text" id="pos-name" value={name} onChange={e => setName(e.target.value)} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-dmi-blue-500 focus:ring-dmi-blue-500 sm:text-sm" />
             </div>
+            <label className="flex items-start gap-2 text-sm text-gray-700">
+                <input
+                    type="checkbox"
+                    checked={runnerUpIsVice}
+                    onChange={e => setRunnerUpIsVice(e.target.checked)}
+                    className="mt-1"
+                />
+                <span>First runner-up becomes vice for this position</span>
+            </label>
             <div className="flex justify-end space-x-3 pt-3">
                 <Button type="button" variant="secondary" onClick={onCancel} disabled={isLoading}>Cancel</Button>
                 <Button type="submit" disabled={isLoading}>{isLoading ? <Spinner /> : (type === 'ADD_POSITION' ? 'Create Position' : 'Update Position')}</Button>

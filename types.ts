@@ -55,6 +55,7 @@ export interface Position {
   id: number;
   name: string;
   isVotable?: boolean;
+  runnerUpIsVice?: boolean;
   candidates: Candidate[];
   totalVotes?: number;
   voterTurnout?: number;

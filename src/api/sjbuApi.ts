@@ -33,6 +33,7 @@ interface PositionWithCandidatesResponse {
     id: number;
     name: string; // The DTO uses name, while the DB uses position_name
     isVotable: boolean;
+    runnerUpIsVice: boolean;
     candidates: CandidateResponse[];
 }
 
@@ -147,7 +148,12 @@ const updateCandidate = (candidateId: number, data: UpdateCandidatePayload): Pro
  */
 const getAllPositionsWithCandidates = (): Promise<AxiosResponse<{ positions: PositionWithCandidatesResponse[] }>> => {
     return API.get('/positions').then(async (response) => {
-      const positions = response.data.data as Array<{ id: number; positionName: string; isVotable: boolean }>;
+      const positions = response.data.data as Array<{
+        id: number;
+        positionName: string;
+        isVotable: boolean;
+        runnerUpIsVice: boolean;
+      }>;
       const enrichedPositions = await Promise.all(
         positions.map(async (position) => {
           const candidatesResponse = await API.get(`/positions/${position.id}/candidates`);
@@ -155,6 +161,7 @@ const getAllPositionsWithCandidates = (): Promise<AxiosResponse<{ positions: Pos
             id: position.id,
             name: position.positionName,
             isVotable: position.isVotable,
+            runnerUpIsVice: position.runnerUpIsVice,
             candidates: candidatesResponse.data.data,
           };
         })
