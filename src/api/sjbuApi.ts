@@ -64,7 +64,7 @@ interface CandidateResponse {
 }
 // --- END NEW INTERFACES ---
 
-const configuredApiUrl = process.env.REACT_APP_API_URL || '/api/v1';
+const configuredApiUrl = import.meta.env.VITE_API_URL || '/api/v1';
 const apiRoot = configuredApiUrl
   .replace(/\/api\/app\/?$/, '/api/v1')
   .replace(/\/+$/, '');

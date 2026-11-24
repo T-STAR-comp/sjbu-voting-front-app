@@ -19,9 +19,6 @@ export default defineConfig(({ mode }) => {
         },
       },
       plugins: [react()],
-      define: {
-        'process.env.REACT_APP_API_URL': JSON.stringify(env.REACT_APP_API_URL || ''),
-      },
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
