@@ -64,7 +64,7 @@ interface CandidateResponse {
 }
 // --- END NEW INTERFACES ---
 
-const configuredApiUrl = 'https://sjbu-voting-production.up.railway.app';
+const configuredApiUrl = "https://sjbu-voting-production.up.railway.app" ;
 const apiRoot = configuredApiUrl
   .replace(/\/api\/app\/?$/, '/api/v1')
   .replace(/\/+$/, '');
